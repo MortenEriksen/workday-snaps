@@ -3,7 +3,7 @@
 Python command line tool using ImageMagick's "import" for X11 to grab
 a screenshot at regular intervals for a pre-defined period. Usage:
 
-`
+```
 $ workdaysnaps.py [-h] [--period PERIOD] [--interval [INTERVAL]]
                        [--randomize]
 
@@ -15,4 +15,4 @@ optional arguments:
   --interval [INTERVAL]
                         seconds between each screenshot
   --randomize           slightly randomize exact time of each screenshot
-`
+```
