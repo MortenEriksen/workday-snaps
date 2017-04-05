@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
 import os
@@ -6,38 +6,72 @@ import sys
 import time
 import random
 import hashlib
+import argparse # since Python 3.2
+import datetime
+
+class PeriodArgument(argparse.Action):
+    """helper class to parse --period input argument, from HH:MM format
+       to datetime.timedelta."""
+
+    def __init__(self, option_strings, dest, nargs=None, **kwargs):
+        super(PeriodArgument, self).__init__(option_strings, dest, **kwargs)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        try:
+            hhmm = [int(t) for t in values.split(":")]
+            setattr(namespace, self.dest, datetime.timedelta(hours=hhmm[0], minutes=hhmm[1] if len(hhmm)>1 else 0))
+        except:
+            raise argparse.ArgumentError(self, "wrong format, must be HH:MM")
+
 
 if __name__ == "__main__":
-    time.sleep(random.randint(1, 5*60))
 
-    os.environ['DISPLAY'] = ':0.0'
+    argp = argparse.ArgumentParser(description="Take screenshots in regular intervals.")
+    argp.add_argument("--period", help="time to run, in HH:MM format", nargs="?", default=datetime.timedelta(hours=8), action=PeriodArgument)
+    argp.add_argument("--interval", help="seconds between each screenshot", type=int, nargs="?", default=30)
+    argp.add_argument("--randomize", help="slightly randomize exact time of each screenshot", action="store_true")
+    args = argp.parse_args()
 
-    rootdir = os.path.join(os.path.dirname(__file__), 'snaps', '%s' % time.strftime('%Y%m%d'))
+    until = datetime.datetime.now() + args.period
+    print("Will be taking screenshots at %d second intervals, up until %s." \
+          % (args.interval, until.strftime("%H:%M:%S")))
+
+    os.environ["DISPLAY"] = ":0.0"
+    rootdir = os.path.join(os.path.dirname(__file__), "snaps", "%s" % time.strftime("%Y%m%d"))
     if not os.path.exists(rootdir): os.makedirs(rootdir)
 
-    earlier = os.listdir(rootdir)
-    earlier.sort()
-    last = None if (len(earlier) == 0) else earlier[-1]
+    while datetime.datetime.now() < until:
+        # +/- 15% if randomize
+        waitsecs = args.interval if not args.randomize else random.randint(int(0.85*args.interval), int(1.15*args.interval))
+        time.sleep(waitsecs)
 
-    filename = os.path.join(rootdir, '%s.png' % time.strftime('%H%M%S'))
+        earlier = os.listdir(rootdir)
+        earlier.sort()
+        last = None if (len(earlier) == 0) else earlier[-1]
 
-    os.system('/usr/bin/import -window root "%s"' % filename)
+        filename = os.path.join(rootdir, "%s.png" % time.strftime("%H%M%S"))
 
-    if last:
-        lastmd5 = hashlib.md5()
-        f = open(os.path.join(rootdir, last), 'rb')
-        lastmd5.update(f.read())
-        f.close()
-        lastmd5 = lastmd5.hexdigest()
+        os.system("/usr/bin/import -window root '%s'" % filename)
 
-        newmd5 = hashlib.md5()
-        f = open(filename, 'rb')
-        newmd5.update(f.read())
-        f.close()
-        newmd5 = newmd5.hexdigest()
+        # disabled the check-vs-last for now, don't want this as i want to try to make a movie
+        continue
 
-        if lastmd5 == newmd5:
-            os.remove(filename)
+        if last:
+            # rm the snapshot file if identical with previous
+            lastmd5 = hashlib.md5()
+            f = open(os.path.join(rootdir, last), "rb")
+            lastmd5.update(f.read())
+            f.close()
+            lastmd5 = lastmd5.hexdigest()
+
+            newmd5 = hashlib.md5()
+            f = open(filename, "rb")
+            newmd5.update(f.read())
+            f.close()
+            newmd5 = newmd5.hexdigest()
+
+            if lastmd5 == newmd5:
+                os.remove(filename)
     
 
     sys.exit(0)
