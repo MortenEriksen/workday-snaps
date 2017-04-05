@@ -45,19 +45,17 @@ if __name__ == "__main__":
         waitsecs = args.interval if not args.randomize else random.randint(int(0.85*args.interval), int(1.15*args.interval))
         time.sleep(waitsecs)
 
-        earlier = os.listdir(rootdir)
-        earlier.sort()
-        last = None if (len(earlier) == 0) else earlier[-1]
-
         filename = os.path.join(rootdir, "%s.png" % time.strftime("%H%M%S"))
 
         os.system("/usr/bin/import -window root '%s'" % filename)
+        sys.stdout.write('.'); sys.stdout.flush()
 
+        # rm the snapshot file if identical with previous
+        earlier = os.listdir(rootdir)
+        earlier.sort()
+        last = None if (len(earlier) == 0) else earlier[-1]
         # disabled the check-vs-last for now, don't want this as i want to try to make a movie
-        continue
-
-        if last:
-            # rm the snapshot file if identical with previous
+        if last and False:
             lastmd5 = hashlib.md5()
             f = open(os.path.join(rootdir, last), "rb")
             lastmd5.update(f.read())
@@ -72,6 +70,14 @@ if __name__ == "__main__":
 
             if lastmd5 == newmd5:
                 os.remove(filename)
-    
+
+
+    # FIXME: for amalgamating them into a movie, something like this, from https://wiki.libav.org/Snippets/avconv
+    #
+    # Create video from image sequence
+    # $ avconv -framerate 25 -f image2 -i image-%03d.jpeg -b 65536k out.mov
+    #
+    # Create video from image sequence (really good quality)
+    # $ avconv -framerate 25 -f image2 -i %04d.png -c:v h264 -crf 1 out.mov
 
     sys.exit(0)
